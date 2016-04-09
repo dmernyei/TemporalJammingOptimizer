@@ -20,4 +20,13 @@ public class Point {
     public int getY() {
         return y;
     }
+
+    @Override
+    public boolean equals(Object o){
+        if (null == o || !(o instanceof Point))
+            return false;
+
+        Point p = (Point)o;
+        return p.getX() == x && p.getY() == y;
+    }
 }

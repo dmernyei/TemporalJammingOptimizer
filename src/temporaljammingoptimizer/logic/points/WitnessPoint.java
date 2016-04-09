@@ -5,14 +5,14 @@ package temporaljammingoptimizer.logic.points;
  */
 public class WitnessPoint extends Point {
 
-    private boolean isInsideStorage;
+    private boolean isInsideControlledRegion;
 
-    public WitnessPoint(int x, int y, boolean isInsideStorage) {
+    public WitnessPoint(int x, int y, boolean isInsideControlledRegion) {
         super(x, y);
-        this.isInsideStorage = isInsideStorage;
+        this.isInsideControlledRegion = isInsideControlledRegion;
     }
 
-    public boolean isInsideStorage() {
-        return isInsideStorage;
+    public boolean isInsideControlledRegion() {
+        return isInsideControlledRegion;
     }
 }
