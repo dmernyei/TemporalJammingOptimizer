@@ -9,12 +9,12 @@ import java.util.ResourceBundle;
 public class MessageProvider {
     private static final Locale defaultLocale = Locale.ENGLISH;
 
-    private static ResourceBundle messages = ResourceBundle.getBundle("rao.resources.text.MessagesBundle", MessageProvider.defaultLocale);
+    private static ResourceBundle messages = ResourceBundle.getBundle("temporaljammingoptimizer.resources.text.MessagesBundle", MessageProvider.defaultLocale);
     private static Locale currentLocale = MessageProvider.defaultLocale;
 
     public static void setLocale(Locale locale){
         if (!locale.equals(MessageProvider.currentLocale)){
-            MessageProvider.messages = ResourceBundle.getBundle("rao.resources.text.MessagesBundle", locale);
+            MessageProvider.messages = ResourceBundle.getBundle("temporaljammingoptimizer.resources.text.MessagesBundle", locale);
             MessageProvider.currentLocale = locale;
         }
     }

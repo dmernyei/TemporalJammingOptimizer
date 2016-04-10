@@ -1,6 +1,6 @@
-package temporaljammingoptimizer.logic;
+package temporaljammingoptimizer.logic.geometry;
 
-import temporaljammingoptimizer.logic.points.Point;
+import temporaljammingoptimizer.logic.geometry.points.Point;
 
 /**
  * Created by Daniel Mernyei

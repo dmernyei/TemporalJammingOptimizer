@@ -1,21 +1,21 @@
-package temporaljammingoptimizer.logic;
+package temporaljammingoptimizer.logic.geometry;
 
-import temporaljammingoptimizer.logic.points.Point;
+import temporaljammingoptimizer.logic.geometry.points.Point;
 
 import java.util.ArrayList;
 
 /**
  * Created by Daniel Mernyei
  */
-public class Polygon {
+public class Polygon <P extends Point> {
 
-    private ArrayList<Point> vertices;
+    private ArrayList<P> vertices;
 
     public Polygon(){
         vertices = new ArrayList<>();
     }
 
-    public Polygon(ArrayList<Point> vertices){
+    public Polygon(ArrayList<P> vertices){
         this.vertices = vertices;
     }
 
@@ -27,7 +27,11 @@ public class Polygon {
         return vertices.get(index);
     }
 
-    public void addVertex(Point p){
+    public ArrayList<? extends Point> getVertices(){
+        return vertices;
+    }
+
+    public void addVertex(P p){
         vertices.add(p);
     }
 
