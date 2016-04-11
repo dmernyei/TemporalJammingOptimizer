@@ -10,8 +10,7 @@ import temporaljammingoptimizer.logic.geometry.points.WitnessPoint;
 import temporaljammingoptimizer.utils.MessageProvider;
 import temporaljammingoptimizer.utils.StringUtilities;
 
-import java.io.File;
-import java.io.FileNotFoundException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Scanner;
@@ -24,6 +23,8 @@ public class Optimizer {
     private final Size mapSize;
 
     private AlgorithmType algorithmType;
+    private boolean isOptimizationRunning;
+    private boolean isResultComputed;
 
     private float lowerTBEPThreshold;
     private float upperTBEPThreshold;
@@ -49,6 +50,14 @@ public class Optimizer {
 
     public AlgorithmType getAlgorithmType(){
         return algorithmType;
+    }
+
+    public boolean isOptimizationRunning() {
+        return isOptimizationRunning;
+    }
+
+    public boolean isResultComputed() {
+        return isResultComputed;
     }
 
     public float getLowerTBEPThreshold() {
@@ -132,7 +141,7 @@ public class Optimizer {
     }
 
     public void loadMap(String fileName) throws FileNotFoundException, IncorrectMapException {
-        clearMapData();
+        clearData(true);
 
         Scanner sc = new Scanner(new File(fileName));
         String line;
@@ -184,12 +193,19 @@ public class Optimizer {
         checkJammerWitnessPointRelations();
     }
 
-    private void clearMapData(){
-        controlledRegion.clear();
-        storage.clear();
-        jammers.clear();
-        witnessPoints.clear();
-        Point.resetIndexGenerator();
+    private void clearData(boolean withMapData){
+        if (withMapData) {
+            controlledRegion.clear();
+            storage.clear();
+            jammers.clear();
+            witnessPoints.clear();
+            Point.resetIndexGenerator();
+        }
+
+        // todo: clear algorithm data
+
+        isOptimizationRunning = false;
+        isResultComputed = false;
     }
 
     private void processLine(String line, int readBlockCount, int lineCount) throws IncorrectMapException {
@@ -295,5 +311,52 @@ public class Optimizer {
             if (!jammer.hasStorageAndEavesdropperPointNearby())
                 throw new IncorrectMapException(MessageProvider.getMessage("jammerTooFarFromStorageOrEavesdropperPoints"));
         }
+    }
+
+    public void saveConfiguration(String filePath) throws IOException {
+        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filePath + ".tcfg"));
+        oos.writeObject(lowerTBEPThreshold);
+        oos.writeObject(upperTBEPThreshold);
+        oos.writeObject(propagationFactor1);
+        oos.writeObject(propagationFactor2);
+        oos.writeObject(jammingFactor1);
+        oos.writeObject(jammingFactor2);
+        oos.writeBoolean(stepByStep);
+        oos.close();
+    }
+
+    public void loadConfiguration(File configFile) throws IOException, ClassNotFoundException {
+        clearData(false);
+        ObjectInputStream ois = new ObjectInputStream(new FileInputStream(configFile));
+        lowerTBEPThreshold = ois.readInt();
+        upperTBEPThreshold = ois.readInt();
+        propagationFactor1 = ois.readInt();
+        propagationFactor2 = ois.readInt();
+        jammingFactor1 = ois.readInt();
+        jammingFactor2 = ois.readInt();
+        stepByStep = ois.readBoolean();
+        ois.close();
+    }
+
+    public void saveResult(String filePath) throws FileNotFoundException {
+        if (!isResultComputed)
+            return;
+
+        PrintWriter pw = new PrintWriter(new File(filePath));
+
+        pw.println(MessageProvider.getMessage("configurationInformation"));
+        pw.println(MessageProvider.getMessage("lowerTBEPThreshold") + "\t" + lowerTBEPThreshold);
+        pw.println(MessageProvider.getMessage("upperTBEPThreshold") + "\t" + upperTBEPThreshold);
+        pw.println(MessageProvider.getMessage("propagationFactor1") + "\t" + propagationFactor1);
+        pw.println(MessageProvider.getMessage("propagationFactor2") + "\t" + propagationFactor2);
+        pw.println(MessageProvider.getMessage("jammingFactor1") + "\t" + jammingFactor1);
+        pw.println(MessageProvider.getMessage("jammingFactor2") + "\t" + jammingFactor2);
+        pw.println(MessageProvider.getMessage("showStepByStepWithColon") + "\t" + stepByStep);
+        pw.println();
+        pw.println(MessageProvider.getMessage("algorithminformationWithColon"));
+        // todo: write algorithm information
+
+        pw.close();
+        // todo: is flush needed?
     }
 }
