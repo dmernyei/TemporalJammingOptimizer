@@ -1,13 +1,13 @@
-package temporaljammingoptimizer.utils;
+package temporaljammingoptimizer.logic;
 
 /**
  * Created by Daniel Mernyei
  */
 public class JammerDistanceInfo implements Comparable<JammerDistanceInfo> {
     private int index;
-    private double distance;
+    private float distance;
 
-    public JammerDistanceInfo(int index, double distance){
+    public JammerDistanceInfo(int index, float distance){
         this.index = index;
         this.distance = distance;
     }

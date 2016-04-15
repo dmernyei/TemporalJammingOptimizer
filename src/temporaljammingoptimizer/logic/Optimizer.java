@@ -4,9 +4,10 @@ import temporaljammingoptimizer.logic.algorithms.AlgorithmType;
 import temporaljammingoptimizer.logic.exceptions.IncorrectMapException;
 import temporaljammingoptimizer.logic.geometry.Polygon;
 import temporaljammingoptimizer.logic.geometry.Size;
-import temporaljammingoptimizer.logic.geometry.points.Jammer;
-import temporaljammingoptimizer.logic.geometry.points.Point;
-import temporaljammingoptimizer.logic.geometry.points.WitnessPoint;
+import temporaljammingoptimizer.logic.entities.Entity;
+import temporaljammingoptimizer.logic.entities.Jammer;
+import temporaljammingoptimizer.logic.entities.WitnessPoint;
+import temporaljammingoptimizer.logic.geometry.Vector2;
 import temporaljammingoptimizer.utils.MessageProvider;
 import temporaljammingoptimizer.utils.StringUtilities;
 
@@ -14,6 +15,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Scanner;
+import java.util.stream.Collectors;
 
 /**
  * Created by Daniel Mernyei
@@ -34,18 +36,19 @@ public class Optimizer {
     private float jammingFactor2;
     private boolean stepByStep;
 
-    private Polygon<Point> controlledRegion;
-    private Polygon<Point> storage;
+    private Polygon controlledRegion;
+    private Polygon storage;
     private ArrayList<Jammer> jammers;
     private ArrayList<WitnessPoint> witnessPoints;
 
     public Optimizer(Size mapSize) {
         this.mapSize = mapSize;
 
-        controlledRegion = new Polygon<>();
-        storage = new Polygon<>();
+        controlledRegion = new Polygon();
+        storage = new Polygon();
         jammers = new ArrayList<>();
         witnessPoints = new ArrayList<>();
+        algorithmType = AlgorithmType.NOT_APPLICABLE;
     }
 
     public AlgorithmType getAlgorithmType(){
@@ -116,11 +119,11 @@ public class Optimizer {
         this.stepByStep = stepByStep;
     }
 
-    public Polygon<Point> getControlledRegion() {
+    public Polygon getControlledRegion() {
         return controlledRegion;
     }
 
-    public Polygon<Point> getStorage() {
+    public Polygon getStorage() {
         return storage;
     }
 
@@ -140,6 +143,14 @@ public class Optimizer {
         return witnessPoints.get(index);
     }
 
+    public void optimize(){
+
+    }
+
+    public void step(){
+
+    }
+
     public void loadMap(String fileName) throws FileNotFoundException, IncorrectMapException {
         clearData(true);
 
@@ -149,7 +160,7 @@ public class Optimizer {
         int readBlockCount = 0;
         boolean previousLineWasEmpty = false;
 
-        // Loading points
+        // Loading positions
         while (sc.hasNextLine() && 3 >= readBlockCount) {
             line = sc.nextLine();
             ++lineCount;
@@ -176,19 +187,19 @@ public class Optimizer {
             throw new IncorrectMapException(MessageProvider.getMessage("incorrectMapStructure"));
         }
 
-        // Filtering out duplicate points
-        filterDuplicatePoints(controlledRegion.getVertices());
-        filterDuplicatePoints(storage.getVertices());
-        filterDuplicatePoints(jammers);
-        filterDuplicatePoints(witnessPoints);
+        // Filtering out duplicate entities
+        filterDuplicateElements(controlledRegion.getVertices());
+        filterDuplicateElements(storage.getVertices());
+        filterDuplicateElements(jammers);
+        filterDuplicateElements(witnessPoints);
 
         // Checking polygons
         checkPolygons();
 
-        // Checking jammers, witness points, and their relations
+        // Checking jammers, witness entities, and their relations
         checkJammers();
         determineAlgorithmModelType();
-        determineWitnessPointTypes();
+        setWitnessPointTypes();
         assignWitnessPointsToJammers();
         checkJammerWitnessPointRelations();
     }
@@ -199,7 +210,7 @@ public class Optimizer {
             storage.clear();
             jammers.clear();
             witnessPoints.clear();
-            Point.resetIndexGenerator();
+            Entity.resetIdGenerator();
         }
 
         // todo: clear algorithm data
@@ -210,38 +221,38 @@ public class Optimizer {
 
     private void processLine(String line, int readBlockCount, int lineCount) throws IncorrectMapException {
         String[] stringNumbers;
-        Point point;
+        Vector2 position;
 
-        // Checking the point syntactically and semantically
+        // Checking the position syntactically and semantically
         stringNumbers = line.split(",");
         if (2 != stringNumbers.length){
             throw new IncorrectMapException(StringUtilities.appendIntegerToSentence(MessageProvider.getMessage("incorrectDimensionCount"), lineCount));
         }
 
         try {
-            point = new Point(Integer.parseInt(stringNumbers[0].trim()), Integer.parseInt(stringNumbers[1].trim()));
+            position = new Vector2(Integer.parseInt(stringNumbers[0].trim()), Integer.parseInt(stringNumbers[1].trim()));
         }
         catch (NumberFormatException ex){
             throw new IncorrectMapException(StringUtilities.appendIntegerToSentence(MessageProvider.getMessage("incorrectDimensionType"), lineCount));
         }
 
-        if (!mapSize.isPointInsideArea(point)){
-            throw new IncorrectMapException(StringUtilities.appendIntegerToSentence(MessageProvider.getMessage("pointOutOfMap"), lineCount));
+        if (!mapSize.isPositionInsideArea(position)){
+            throw new IncorrectMapException(StringUtilities.appendIntegerToSentence(MessageProvider.getMessage("positionOutOfMap"), lineCount));
         }
 
-        // Assigning the point to the proper map object
+        // Assigning the position to the proper map object
         switch (readBlockCount) {
             case 0:
-                controlledRegion.addVertex(point);
+                controlledRegion.addVertex(position);
                 break;
             case 1:
-                storage.addVertex(point);
+                storage.addVertex(position);
                 break;
             case 2:
-                jammers.add(new Jammer(point.getX(), point.getY()));
+                jammers.add(new Jammer(position));
                 break;
             case 3:
-                witnessPoints.add(new WitnessPoint(point.getX(), point.getY()));
+                witnessPoints.add(new WitnessPoint(position));
                 break;
         }
     }
@@ -257,23 +268,23 @@ public class Optimizer {
         // Is the storage inside the controlled region?
         int vertexCount = storage.getVertexCount();
         for (int i = 0; i < vertexCount; ++i){
-            if (!controlledRegion.isPointInsidePolygon(storage.getVertexAt(i)))
+            if (!controlledRegion.isPositionInsidePolygon(storage.getVertexAt(i)))
                 throw new IncorrectMapException(MessageProvider.getMessage("storageNotInsideControlledRegion"));
         }
     }
 
-    private void filterDuplicatePoints(ArrayList<? extends Point> pointArray){
-        HashSet<Point> pointSet = new HashSet<>();
-        Point point;
+    private <T> void filterDuplicateElements(ArrayList<T> elements){
+        HashSet<T> set = new HashSet<>();
+        T element;
 
-        for (int i = 0; i < pointArray.size(); ++i){
-            point = pointArray.get(i);
-            if (pointSet.contains(point)){
-                pointArray.remove(i);
+        for (int i = 0; i < elements.size(); ++i){
+            element = elements.get(i);
+            if (set.contains(element)){
+                elements.remove(i);
                 --i;
             }
             else{
-                pointSet.add(point);
+                set.add(element);
             }
         }
     }
@@ -281,22 +292,28 @@ public class Optimizer {
     private void checkJammers() throws IncorrectMapException {
         // Checking jammer positions
         for (Jammer jammer : jammers) {
-            if (!controlledRegion.isPointInsidePolygon(jammer))
+            if (!controlledRegion.isPositionInsidePolygon(jammer.getPosition()))
                 throw new IncorrectMapException(MessageProvider.getMessage("jammerNotInsideControlledRegion"));
 
-            if (storage.isPointInsidePolygon(jammer))
+            if (storage.isPositionInsidePolygon(jammer.getPosition()))
                 throw new IncorrectMapException(MessageProvider.getMessage("jammerInsideStorage"));
         }
     }
 
     private void determineAlgorithmModelType(){
-        Polygon<Jammer> jammerPolygon = new Polygon<>(jammers);
+
+        ArrayList<Vector2> jammerPositions = jammers.stream()
+                .map(Entity::getPosition)
+                .collect(Collectors.toCollection(ArrayList<Vector2>::new));
+
+        Polygon jammerPolygon = new Polygon(jammerPositions);
         algorithmType = jammerPolygon.isConvexAndHasArea() ? AlgorithmType.TWO_NEAREST_JAMMER : AlgorithmType.NEAREST_JAMMER;
     }
 
-    private void determineWitnessPointTypes(){
-        for (WitnessPoint witnessPoint : witnessPoints)
-            witnessPoint.setInsideControlledRegion(controlledRegion.isPointInsidePolygon(witnessPoint));
+    private void setWitnessPointTypes(){
+        witnessPoints.stream().filter(witnessPoint -> !controlledRegion.isPositionInsidePolygon(witnessPoint.getPosition())).forEach(witnessPoint -> {
+            witnessPoint.setClosestStoragePoint(storage);
+        });
     }
 
     private void assignWitnessPointsToJammers() throws IncorrectMapException {

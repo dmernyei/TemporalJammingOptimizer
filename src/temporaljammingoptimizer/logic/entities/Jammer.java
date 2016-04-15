@@ -1,19 +1,20 @@
-package temporaljammingoptimizer.logic.geometry.points;
+package temporaljammingoptimizer.logic.entities;
+
+import temporaljammingoptimizer.logic.geometry.Vector2;
 
 import java.util.ArrayList;
 
 /**
  * Created by Daniel Mernyei
  */
-public class Jammer extends Point {
+public class Jammer extends Entity {
 
     private float activityProbability = -1;
     private ArrayList<WitnessPoint> nearbyStoragePoints;
     private ArrayList<WitnessPoint> nearbyEavesdropperPoints;
 
-    public Jammer(int x, int y) {
-        super(x, y);
-        index = ++Point.indexGenerator;
+    public Jammer(Vector2 position){
+        super(position);
         nearbyStoragePoints = new ArrayList<>();
         nearbyEavesdropperPoints = new ArrayList<>();
     }
@@ -43,7 +44,7 @@ public class Jammer extends Point {
     }
 
     public void addNearbyWitnessPoint(WitnessPoint witnessPoint){
-        if (witnessPoint.isInsideControlledRegion())
+        if (witnessPoint.isStoragePoint())
             nearbyStoragePoints.add(witnessPoint);
         else
             nearbyEavesdropperPoints.add(witnessPoint);
@@ -59,12 +60,12 @@ public class Jammer extends Point {
         String nearbySP = "Nearby storage points: ";
         String nearbyEP = "Nearby eavesdropper points: ";
 
-        for (Point p : nearbyStoragePoints){
-            nearbySP += "[" + p.getX() + " ," + p.getY() + "] ";
+        for (WitnessPoint witnessPoint : nearbyStoragePoints){
+            nearbySP += witnessPoint.getPosition().toString() + " ";
         }
 
-        for (Point p : nearbyEavesdropperPoints){
-            nearbyEP += "[" + p.getX() + " ," + p.getY() + "] ";
+        for (WitnessPoint witnessPoint : nearbyEavesdropperPoints){
+            nearbyEP += witnessPoint.getPosition().toString() + " ";
         }
 
         return coordinates + "\n" + nearbySP + "\n" + nearbyEP;
