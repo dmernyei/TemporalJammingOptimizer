@@ -5,7 +5,7 @@ import temporaljammingoptimizer.logic.geometry.Vector2;
 /**
  * Created by Daniel Mernyei
  */
-public class Entity {
+public abstract class Entity {
 
     private static int idGenerator = 0;
 

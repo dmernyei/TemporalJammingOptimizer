@@ -1,7 +1,11 @@
 package temporaljammingoptimizer.logic;
 
 import temporaljammingoptimizer.logic.algorithms.AlgorithmType;
+import temporaljammingoptimizer.logic.algorithms.onenearestjammeralgorithm.OneNearestJammerAlgorithm;
+import temporaljammingoptimizer.logic.algorithms.onenearestjammeralgorithm.WitnessPointJAPBoundInfo;
+import temporaljammingoptimizer.logic.algorithms.twonearestjammeralgorithm.TwoNearestJammerAlgorithm;
 import temporaljammingoptimizer.logic.exceptions.IncorrectMapException;
+import temporaljammingoptimizer.logic.exceptions.UnAssignableJammerException;
 import temporaljammingoptimizer.logic.geometry.Polygon;
 import temporaljammingoptimizer.logic.geometry.Size;
 import temporaljammingoptimizer.logic.entities.Entity;
@@ -24,31 +28,32 @@ public class Optimizer {
 
     private final Size mapSize;
 
+    private Configuration configuration;
     private AlgorithmType algorithmType;
     private boolean isOptimizationRunning;
     private boolean isResultComputed;
 
-    private float lowerTBEPThreshold;
-    private float upperTBEPThreshold;
-    private float propagationFactor1;
-    private float propagationFactor2;
-    private float jammingFactor1;
-    private float jammingFactor2;
-    private boolean stepByStep;
+    private OneNearestJammerAlgorithm oneNearestJammerAlgorithm;
+    private TwoNearestJammerAlgorithm twoNearestJammerAlgorithm;
 
     private Polygon controlledRegion;
     private Polygon storage;
     private ArrayList<Jammer> jammers;
     private ArrayList<WitnessPoint> witnessPoints;
+    private float totalJAPSum = -1;
 
     public Optimizer(Size mapSize) {
         this.mapSize = mapSize;
 
+        configuration = new Configuration(0.07f, 0.16f, 0.1f, 2, 3, 2, false);
         controlledRegion = new Polygon();
         storage = new Polygon();
         jammers = new ArrayList<>();
         witnessPoints = new ArrayList<>();
         algorithmType = AlgorithmType.NOT_APPLICABLE;
+
+        oneNearestJammerAlgorithm = new OneNearestJammerAlgorithm();
+        twoNearestJammerAlgorithm = new TwoNearestJammerAlgorithm();
     }
 
     public AlgorithmType getAlgorithmType(){
@@ -63,60 +68,12 @@ public class Optimizer {
         return isResultComputed;
     }
 
-    public float getLowerTBEPThreshold() {
-        return lowerTBEPThreshold;
+    public Configuration getConfiguration() {
+        return configuration;
     }
 
-    public void setLowerTBEPThreshold(float lowerTBEPThreshold) {
-        this.lowerTBEPThreshold = lowerTBEPThreshold;
-    }
-
-    public float getUpperTBEPThreshold() {
-        return upperTBEPThreshold;
-    }
-
-    public void setUpperTBEPThreshold(float upperTBEPThreshold) {
-        this.upperTBEPThreshold = upperTBEPThreshold;
-    }
-
-    public float getPropagationFactor1() {
-        return propagationFactor1;
-    }
-
-    public void setPropagationFactor1(float propagationFactor1) {
-        this.propagationFactor1 = propagationFactor1;
-    }
-
-    public float getPropagationFactor2() {
-        return propagationFactor2;
-    }
-
-    public void setPropagationFactor2(float propagationFactor2) {
-        this.propagationFactor2 = propagationFactor2;
-    }
-
-    public float getJammingFactor1() {
-        return jammingFactor1;
-    }
-
-    public void setJammingFactor1(float jammingFactor1) {
-        this.jammingFactor1 = jammingFactor1;
-    }
-
-    public float getJammingFactor2() {
-        return jammingFactor2;
-    }
-
-    public void setJammingFactor2(float jammingFactor2) {
-        this.jammingFactor2 = jammingFactor2;
-    }
-
-    public boolean isStepByStep() {
-        return stepByStep;
-    }
-
-    public void setStepByStep(boolean stepByStep) {
-        this.stepByStep = stepByStep;
+    public void setConfiguration(Configuration configuration){
+        this.configuration = configuration;
     }
 
     public Polygon getControlledRegion() {
@@ -143,12 +100,76 @@ public class Optimizer {
         return witnessPoints.get(index);
     }
 
-    public void optimize(){
-
+    public ArrayList<WitnessPointJAPBoundInfo> getStoragePointJAPBoundInfos(){
+        return oneNearestJammerAlgorithm.getStoragePointJAPBoundInfos();
     }
 
-    public void step(){
+    public ArrayList<WitnessPointJAPBoundInfo> getEavesdropperPointJAPBoundInfos(){
+        return oneNearestJammerAlgorithm.getEavesdropperPointJAPBoundInfos();
+    }
 
+    public float getMinStoragePointJAPBound(){
+        return oneNearestJammerAlgorithm.getMinStoragePointJAPBound();
+    }
+
+    public float getMaxEavesdropperPointJAPBound(){
+        return oneNearestJammerAlgorithm.getMaxEavesdropperPointJAPBound();
+    }
+    
+    public float getTotalJAPSum() {
+        return totalJAPSum;
+    }
+
+    public void optimize() throws UnAssignableJammerException {
+        if (isOptimizationRunning)
+            return;
+
+        isOptimizationRunning = true;
+        isResultComputed = false;
+
+        if (AlgorithmType.NEAREST_JAMMER == algorithmType){
+            oneNearestJammerAlgorithm.reset();
+            oneNearestJammerAlgorithm.setConfiguration(configuration);
+
+            if (!configuration.isStepByStep()){
+                while (oneNearestJammerAlgorithm.isFinished()){
+                    step();
+                }
+            }
+        }
+        else{
+            twoNearestJammerAlgorithm.reset();
+            twoNearestJammerAlgorithm.setConfiguration(configuration);
+            twoNearestJammerAlgorithm.computeActivityProbabilities();
+
+            isOptimizationRunning = false;
+            isResultComputed = true;
+            computeTotalJAPSum();
+        }
+    }
+
+    public void step() throws UnAssignableJammerException {
+        if (!isOptimizationRunning || isResultComputed || !configuration.isStepByStep())
+            return;
+
+        oneNearestJammerAlgorithm.computeJAPForNextJammer();
+
+        if (oneNearestJammerAlgorithm.isFinished()){
+            isOptimizationRunning = false;
+            isResultComputed = true;
+            computeTotalJAPSum();
+        }
+    }
+
+    private void computeTotalJAPSum(){
+        if (isResultComputed){
+            totalJAPSum = 0;
+            for (Jammer jammer : jammers)
+                totalJAPSum += jammer.getActivityProbability();
+        }
+        else{
+            totalJAPSum = -1;
+        }
     }
 
     public void loadMap(String fileName) throws FileNotFoundException, IncorrectMapException {
@@ -202,6 +223,16 @@ public class Optimizer {
         setWitnessPointTypes();
         assignWitnessPointsToJammers();
         checkJammerWitnessPointRelations();
+
+        // Assigning jammers to algorithms
+        Jammer[] jammerArray = new Jammer[jammers.size()];
+        for (int i = 0; i < jammerArray.length; ++i)
+            jammerArray[i] = jammers.get(i);
+
+        if (AlgorithmType.NEAREST_JAMMER == algorithmType)
+            oneNearestJammerAlgorithm.setJammers(jammerArray);
+        else
+            twoNearestJammerAlgorithm.setJammers(jammerArray);
     }
 
     private void clearData(boolean withMapData){
@@ -212,8 +243,12 @@ public class Optimizer {
             witnessPoints.clear();
             Entity.resetIdGenerator();
         }
+        else{
+            jammers.forEach(Jammer::resetActivityProbability);
+        }
 
-        // todo: clear algorithm data
+        oneNearestJammerAlgorithm.reset();
+        twoNearestJammerAlgorithm.reset();
 
         isOptimizationRunning = false;
         isResultComputed = false;
@@ -332,26 +367,14 @@ public class Optimizer {
 
     public void saveConfiguration(String filePath) throws IOException {
         ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filePath + ".tcfg"));
-        oos.writeObject(lowerTBEPThreshold);
-        oos.writeObject(upperTBEPThreshold);
-        oos.writeObject(propagationFactor1);
-        oos.writeObject(propagationFactor2);
-        oos.writeObject(jammingFactor1);
-        oos.writeObject(jammingFactor2);
-        oos.writeBoolean(stepByStep);
+        oos.writeObject(configuration);
         oos.close();
     }
 
     public void loadConfiguration(File configFile) throws IOException, ClassNotFoundException {
         clearData(false);
         ObjectInputStream ois = new ObjectInputStream(new FileInputStream(configFile));
-        lowerTBEPThreshold = ois.readInt();
-        upperTBEPThreshold = ois.readInt();
-        propagationFactor1 = ois.readInt();
-        propagationFactor2 = ois.readInt();
-        jammingFactor1 = ois.readInt();
-        jammingFactor2 = ois.readInt();
-        stepByStep = ois.readBoolean();
+        configuration = (Configuration) ois.readObject();
         ois.close();
     }
 
@@ -362,16 +385,16 @@ public class Optimizer {
         PrintWriter pw = new PrintWriter(new File(filePath));
 
         pw.println(MessageProvider.getMessage("configurationInformation"));
-        pw.println(MessageProvider.getMessage("lowerTBEPThreshold") + "\t" + lowerTBEPThreshold);
-        pw.println(MessageProvider.getMessage("upperTBEPThreshold") + "\t" + upperTBEPThreshold);
-        pw.println(MessageProvider.getMessage("propagationFactor1") + "\t" + propagationFactor1);
-        pw.println(MessageProvider.getMessage("propagationFactor2") + "\t" + propagationFactor2);
-        pw.println(MessageProvider.getMessage("jammingFactor1") + "\t" + jammingFactor1);
-        pw.println(MessageProvider.getMessage("jammingFactor2") + "\t" + jammingFactor2);
-        pw.println(MessageProvider.getMessage("showStepByStepWithColon") + "\t" + stepByStep);
+        pw.println(configuration);
         pw.println();
+
         pw.println(MessageProvider.getMessage("algorithminformationWithColon"));
-        // todo: write algorithm information
+        pw.println(MessageProvider.getMessage("model") + "\t" + algorithmType.toString());
+        pw.println(MessageProvider.getMessage("JAPResultsWithColon"));
+        for (Jammer jammer : jammers){
+            pw.println(jammer.getId() + "\t" + jammer.getActivityProbability());
+        }
+        pw.println(MessageProvider.getMessage("totalJAPSum") + " " + totalJAPSum);
 
         pw.close();
         // todo: is flush needed?

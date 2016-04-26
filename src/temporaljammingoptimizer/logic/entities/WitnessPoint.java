@@ -15,34 +15,32 @@ import java.util.Arrays;
  */
 public class WitnessPoint extends Entity {
 
-    private Vector2 closestStoragePoint;
+    private float smallestDistanceFromStorage = -1;
 
     public WitnessPoint(Vector2 position){
         super(position);
     }
 
     public boolean isStoragePoint() {
-        return null == closestStoragePoint;
+        return -1 == smallestDistanceFromStorage;
     }
 
-    public Vector2 getClosestStoragePoint() {
-        return closestStoragePoint;
+    public float getSmallestDistanceFromStorage() {
+        return smallestDistanceFromStorage;
     }
 
     public void setClosestStoragePoint(Polygon storage){
         int vertexCount = storage.getVertexCount();
-        closestStoragePoint = MathUtilities.closestPointInSegmentToOuterPoint(storage.getVertexAt(0), storage.getVertexAt(1), position);
-        float smallestDistance = Vector2.distance(closestStoragePoint, position);
-        Vector2 currentClosestStoragePoint;
+        Vector2 currentClosestStoragePoint = MathUtilities.closestPointInSegmentToOuterPoint(storage.getVertexAt(0), storage.getVertexAt(1), position);
+        smallestDistanceFromStorage = Vector2.distance(currentClosestStoragePoint, position);
         float currentDistance;
 
         for (int i = 1; i < vertexCount; ++i){
             currentClosestStoragePoint = MathUtilities.closestPointInSegmentToOuterPoint(storage.getVertexAt(i), storage.getVertexAt((i + 1) % vertexCount), position);
             currentDistance = Vector2.distance(currentClosestStoragePoint, position);
 
-            if (currentDistance < smallestDistance){
-                smallestDistance = currentDistance;
-                closestStoragePoint = currentClosestStoragePoint;
+            if (currentDistance < smallestDistanceFromStorage){
+                smallestDistanceFromStorage = currentDistance;
             }
         }
     }
@@ -72,6 +70,6 @@ public class WitnessPoint extends Entity {
 
     @Override
     public String toString(){
-        return super.toString() + " storage point: " + isStoragePoint() + " closest storage point: " + (isStoragePoint() ? "none" : closestStoragePoint.toString());
+        return super.toString() + " storage point: " + isStoragePoint();
     }
 }
