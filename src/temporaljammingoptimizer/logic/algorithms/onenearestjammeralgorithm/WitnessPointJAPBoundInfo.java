@@ -7,7 +7,7 @@ public class WitnessPointJAPBoundInfo {
     private int witnessPointId;
     private float JAPBound;
 
-    public WitnessPointJAPBoundInfo(int witnessPointId, float JAPBound){
+    WitnessPointJAPBoundInfo(int witnessPointId, float JAPBound){
         this.witnessPointId = witnessPointId;
         this.JAPBound = JAPBound;
     }

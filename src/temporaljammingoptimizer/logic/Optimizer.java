@@ -42,7 +42,7 @@ public class Optimizer {
     private float totalJAPSum = -1;
 
     public Optimizer() {
-        configuration = new Configuration(0.1f, 0.03f, 0.1f, 0.1f, 7, 8, true);
+        configuration = new Configuration(0.1f, 0.03f, 0.11f, 0.11f, 0.1f, 0.1f, true);
         controlledRegion = new Polygon();
         storage = new Polygon();
         jammers = new ArrayList<>();

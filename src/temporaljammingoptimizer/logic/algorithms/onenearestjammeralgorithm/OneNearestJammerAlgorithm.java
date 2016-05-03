@@ -138,13 +138,6 @@ public class OneNearestJammerAlgorithm extends NearestJammerAlgorithm {
         }
         else{
             float storageDistanceFactor = computeStorageDistanceFactor(witnessPoint.getSmallestDistanceFromStorage());
-
-//            float a = (1 - activityProbability) * storageDistanceFactor;
-//            //float b = activityProbability * Math.max(storageDistanceFactor, jammerDistanceFactor);
-//            float b = activityProbability * jammerDistanceFactor;
-//
-//            return a + b;
-
             return (1 - activityProbability) * storageDistanceFactor
                     + activityProbability * Math.max(storageDistanceFactor, jammerDistanceFactor);
         }

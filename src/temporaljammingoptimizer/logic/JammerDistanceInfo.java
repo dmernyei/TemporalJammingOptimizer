@@ -16,7 +16,7 @@ public class JammerDistanceInfo implements Comparable<JammerDistanceInfo> {
         return index;
     }
 
-    public double getDistance() {
+    private double getDistance() {
         return distance;
     }
 

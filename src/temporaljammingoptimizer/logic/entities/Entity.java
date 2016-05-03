@@ -9,11 +9,11 @@ public abstract class Entity {
 
     private static int idGenerator = 0;
 
-    protected Vector2 position;
+    Vector2 position;
 
     private int id;
 
-    public Entity(Vector2 position){
+    Entity(Vector2 position){
         this.position = position;
         id = ++Entity.idGenerator;
     }
