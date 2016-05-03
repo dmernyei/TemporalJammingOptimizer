@@ -1,6 +1,6 @@
 package temporaljammingoptimizer.logic.exceptions;
 
-import temporaljammingoptimizer.utils.MessageProvider;
+import temporaljammingoptimizer.utilities.MessageProvider;
 
 /**
  * Created by Daniel Mernyei

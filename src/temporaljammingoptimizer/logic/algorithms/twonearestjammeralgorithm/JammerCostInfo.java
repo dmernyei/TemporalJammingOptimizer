@@ -3,28 +3,28 @@ package temporaljammingoptimizer.logic.algorithms.twonearestjammeralgorithm;
 /**
  * Created by Daniel Mernyei
  */
-public class JammerCostInfo {
+class JammerCostInfo {
     private float cost;
     private int middleJAPIndex;
 
-    public JammerCostInfo(){
+    JammerCostInfo(){
         this.cost = Float.MAX_VALUE;
-        this.middleJAPIndex = -1;       // todo: is this needed?
+        this.middleJAPIndex = -1;
     }
 
-    public float getCost() {
+    float getCost() {
         return cost;
     }
 
-    public void setCost(float cost) {
+    void setCost(float cost) {
         this.cost = cost;
     }
 
-    public int getMiddleJAPIndex() {
+    int getMiddleJAPIndex() {
         return middleJAPIndex;
     }
 
-    public void setMiddleJAPIndex(int middleJAPIndex) {
+    void setMiddleJAPIndex(int middleJAPIndex) {
         this.middleJAPIndex = middleJAPIndex;
     }
 }

@@ -1,12 +1,12 @@
 package temporaljammingoptimizer.logic.algorithms;
 
-import temporaljammingoptimizer.utils.MessageProvider;
+import temporaljammingoptimizer.utilities.MessageProvider;
 
 /**
  * Created by Daniel Mernyei
  */
 public enum AlgorithmType {
-    NOT_APPLICABLE(MessageProvider.getMessage("NA")),
+    NOT_APPLICABLE(MessageProvider.getMessage("na")),
     NEAREST_JAMMER(MessageProvider.getMessage("nearestJammer")),
     TWO_NEAREST_JAMMER(MessageProvider.getMessage("twoNearestJammer"));
 

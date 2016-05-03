@@ -1,4 +1,4 @@
-package temporaljammingoptimizer.utils;
+package temporaljammingoptimizer.utilities;
 
 /**
  * Created by Daniel Mernyei

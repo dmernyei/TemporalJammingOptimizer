@@ -14,7 +14,7 @@ public class TJOMain {
 //        Size s = new Size(1200, 1000);
 //        Optimizer o = new Optimizer(s);
 //        try {
-//            o.loadMap("input2.txt");
+//            o.openMap("input2.txt");
 //        }
 //        catch (Exception ex){
 //            System.out.println(ex.getMessage());

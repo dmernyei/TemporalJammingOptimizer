@@ -1,6 +1,6 @@
 package temporaljammingoptimizer.logic.geometry;
 
-import temporaljammingoptimizer.utils.MathUtilities;
+import temporaljammingoptimizer.utilities.MathUtilities;
 
 import java.util.ArrayList;
 

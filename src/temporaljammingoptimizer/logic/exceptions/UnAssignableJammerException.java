@@ -1,7 +1,7 @@
 package temporaljammingoptimizer.logic.exceptions;
 
-import temporaljammingoptimizer.utils.MessageProvider;
-import temporaljammingoptimizer.utils.StringUtilities;
+import temporaljammingoptimizer.utilities.MessageProvider;
+import temporaljammingoptimizer.utilities.StringUtilities;
 
 /**
  * Created by Daniel Mernyei
@@ -11,7 +11,11 @@ public class UnAssignableJammerException extends Exception {
         super(msg);
     }
 
-    public UnAssignableJammerException(int jammerID){
-        super(StringUtilities.appendIntegerToSentence(MessageProvider.getMessage("defaultUnAssignableJammerExceptionMessage"), jammerID));
+    public UnAssignableJammerException(String msg, int entityID){
+        super(StringUtilities.appendIntegerToSentence(msg, entityID));
+    }
+
+    public UnAssignableJammerException(){
+        super(MessageProvider.getMessage("defaultUnAssignableJammerExceptionMessageForTwoNearestJammerModel"));
     }
 }

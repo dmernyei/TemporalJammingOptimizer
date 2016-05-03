@@ -9,7 +9,7 @@ import java.util.ArrayList;
  */
 public class Jammer extends Entity {
 
-    private float activityProbability = -1;
+    private float JAP = -1;
     private ArrayList<WitnessPoint> nearbyWitnessPoints;
 
     public Jammer(Vector2 position){
@@ -17,20 +17,20 @@ public class Jammer extends Entity {
         nearbyWitnessPoints = new ArrayList<>();
     }
 
-    public float getActivityProbability() {
-        return activityProbability;
+    public float getJAP() {
+        return JAP;
     }
 
-    public void setActivityProbability(float activityProbability) {
-        this.activityProbability = activityProbability;
+    public void setJAP(float JAP) {
+        this.JAP = JAP;
     }
 
-    public void resetActivityProbability(){
-        activityProbability = -1;
+    public void resetJAP(){
+        JAP = -1;
     }
 
-    public boolean isActivityProbabilitySet(){
-        return -1 != activityProbability;
+    public boolean isJAPSet(){
+        return -1 != JAP;
     }
 
     public int getNearbyWitnessPointCount(){
@@ -41,7 +41,7 @@ public class Jammer extends Entity {
         return nearbyWitnessPoints.get(index);
     }
 
-    public void addNearbyWitnessPoint(WitnessPoint witnessPoint){
+    void addNearbyWitnessPoint(WitnessPoint witnessPoint){
         nearbyWitnessPoints.add(witnessPoint);
     }
 
@@ -61,7 +61,7 @@ public class Jammer extends Entity {
         return false;
     }
 
-    public boolean isWitnessPointNearby(WitnessPoint witnessPoint){
+    private boolean isWitnessPointNearby(WitnessPoint witnessPoint){
         return nearbyWitnessPoints.contains(witnessPoint);
     }
 

@@ -3,6 +3,7 @@ package temporaljammingoptimizer.logic.algorithms.twonearestjammeralgorithm;
 import temporaljammingoptimizer.logic.algorithms.NearestJammerAlgorithm;
 import temporaljammingoptimizer.logic.entities.Jammer;
 import temporaljammingoptimizer.logic.entities.WitnessPoint;
+import temporaljammingoptimizer.logic.exceptions.UnAssignableJammerException;
 import temporaljammingoptimizer.logic.geometry.Vector2;
 
 import java.util.ArrayList;
@@ -11,28 +12,27 @@ import java.util.ArrayList;
  * Created by Daniel Mernyei
  */
 public class TwoNearestJammerAlgorithm extends NearestJammerAlgorithm {
-    private final float JAPDomainStep;
-
     private float[] JAPDomain;
     private JammerCostInfo[][][][] result;
 
     public TwoNearestJammerAlgorithm(){
         initializeActivityProbabilityDomain();
-        JAPDomainStep = 0.01f;
     }
 
     private void initializeActivityProbabilityDomain(){
-        ArrayList<Float> values = new ArrayList<>();
-        float value = 0.0f;
+        ArrayList<Integer> values = new ArrayList<>();
+        int value = 0;
+        int JAPDomainStep = 1;
+        float divisor = 100.0f;
 
         do{
             values.add(value);
             value += JAPDomainStep;
-        }while (value <= 1.0f);
+        }while (value <= 100);
 
         JAPDomain = new float[values.size()];
         for (int i = 0; i < values.size(); ++i){
-            JAPDomain[i] = values.get(i);
+            JAPDomain[i] = values.get(i) / divisor;
         }
     }
 
@@ -40,7 +40,7 @@ public class TwoNearestJammerAlgorithm extends NearestJammerAlgorithm {
         result = null;
     }
 
-    public void computeActivityProbabilities(){
+    public void computeActivityProbabilities() throws UnAssignableJammerException {
         initializeResult();
 
         computeBaseCaseCosts();
@@ -147,8 +147,9 @@ public class TwoNearestJammerAlgorithm extends NearestJammerAlgorithm {
     }
 
     private void computeRemainderCompositeCosts(int[] powerOfTwoIndices){
+        int jammerCount = jammers.length;
         for (int i = 0; i < powerOfTwoIndices.length - 1; ++i){
-            computeCompositeCaseCost(0, powerOfTwoIndices[i], powerOfTwoIndices[i + 1]);
+            computeCompositeCaseCost(0, powerOfTwoIndices[i], powerOfTwoIndices[i + 1] % jammerCount);
         }
     }
 
@@ -190,7 +191,7 @@ public class TwoNearestJammerAlgorithm extends NearestJammerAlgorithm {
         return indicesArray;
     }
 
-    private void assignJAPToJammersFromResult(){
+    private void assignJAPToJammersFromResult() throws UnAssignableJammerException {
         int JAPDomainSize = JAPDomain.length;
         JammerCostInfo minJammerCostInfo = result[0][0][0][0];
         int index = 0;
@@ -204,6 +205,10 @@ public class TwoNearestJammerAlgorithm extends NearestJammerAlgorithm {
             }
         }
 
+        if (minJammerCostInfo.getCost() == Float.MAX_VALUE)
+            throw new UnAssignableJammerException();
+
+        jammers[0].setJAP(JAPDomain[index]);
         assignJAPToJammerSubsetFromResult(0, jammers.length, index, index);
     }
 
@@ -212,7 +217,7 @@ public class TwoNearestJammerAlgorithm extends NearestJammerAlgorithm {
         int middleJammerIndex = (0 != jammer1Index || 0 == powerOfTwoSubtractionRemainder) ? (jammer1Index + jammer2Index) / 2 : powerOfTwoSubtractionRemainder;
         int middleJAPIndex = result[jammer1Index][jammer2Index % jammers.length][JAP1Index][JAP2Index].getMiddleJAPIndex();
 
-        jammers[middleJammerIndex].setActivityProbability(JAPDomain[middleJAPIndex]);
+        jammers[middleJammerIndex].setJAP(JAPDomain[middleJAPIndex]);
 
         if (1 < middleJammerIndex - jammer1Index)
             assignJAPToJammerSubsetFromResult(jammer1Index, middleJammerIndex, JAP1Index, middleJAPIndex);

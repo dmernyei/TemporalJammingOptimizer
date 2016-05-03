@@ -12,8 +12,8 @@ import temporaljammingoptimizer.logic.entities.Entity;
 import temporaljammingoptimizer.logic.entities.Jammer;
 import temporaljammingoptimizer.logic.entities.WitnessPoint;
 import temporaljammingoptimizer.logic.geometry.Vector2;
-import temporaljammingoptimizer.utils.MessageProvider;
-import temporaljammingoptimizer.utils.StringUtilities;
+import temporaljammingoptimizer.utilities.MessageProvider;
+import temporaljammingoptimizer.utilities.StringUtilities;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -25,27 +25,24 @@ import java.util.stream.Collectors;
  * Created by Daniel Mernyei
  */
 public class Optimizer {
-
-    private final Size mapSize;
-
     private Configuration configuration;
     private AlgorithmType algorithmType;
     private boolean isOptimizationRunning;
     private boolean isResultComputed;
+    private boolean isMapLoadedCorrectly;
 
     private OneNearestJammerAlgorithm oneNearestJammerAlgorithm;
     private TwoNearestJammerAlgorithm twoNearestJammerAlgorithm;
 
+    private Size mapSize;
     private Polygon controlledRegion;
     private Polygon storage;
     private ArrayList<Jammer> jammers;
     private ArrayList<WitnessPoint> witnessPoints;
     private float totalJAPSum = -1;
 
-    public Optimizer(Size mapSize) {
-        this.mapSize = mapSize;
-
-        configuration = new Configuration(0.07f, 0.16f, 0.1f, 2, 3, 2, false);
+    public Optimizer() {
+        configuration = new Configuration(0.1f, 0.03f, 0.1f, 0.1f, 7, 8, true);
         controlledRegion = new Polygon();
         storage = new Polygon();
         jammers = new ArrayList<>();
@@ -54,6 +51,14 @@ public class Optimizer {
 
         oneNearestJammerAlgorithm = new OneNearestJammerAlgorithm();
         twoNearestJammerAlgorithm = new TwoNearestJammerAlgorithm();
+    }
+
+    public boolean isMapLoadedCorrectly() {
+        return isMapLoadedCorrectly;
+    }
+
+    public void setMapSize(Size mapSize) {
+        this.mapSize = mapSize;
     }
 
     public AlgorithmType getAlgorithmType(){
@@ -115,7 +120,7 @@ public class Optimizer {
     public float getMaxEavesdropperPointJAPBound(){
         return oneNearestJammerAlgorithm.getMaxEavesdropperPointJAPBound();
     }
-    
+
     public float getTotalJAPSum() {
         return totalJAPSum;
     }
@@ -124,23 +129,30 @@ public class Optimizer {
         if (isOptimizationRunning)
             return;
 
+        clearData(false);
+
         isOptimizationRunning = true;
         isResultComputed = false;
 
         if (AlgorithmType.NEAREST_JAMMER == algorithmType){
-            oneNearestJammerAlgorithm.reset();
             oneNearestJammerAlgorithm.setConfiguration(configuration);
 
             if (!configuration.isStepByStep()){
-                while (oneNearestJammerAlgorithm.isFinished()){
+                while (!oneNearestJammerAlgorithm.isFinished()){
                     step();
                 }
             }
         }
         else{
-            twoNearestJammerAlgorithm.reset();
             twoNearestJammerAlgorithm.setConfiguration(configuration);
-            twoNearestJammerAlgorithm.computeActivityProbabilities();
+
+            try{
+                twoNearestJammerAlgorithm.computeActivityProbabilities();
+            }
+            catch (UnAssignableJammerException ex){
+                isOptimizationRunning = false;
+                throw ex;
+            }
 
             isOptimizationRunning = false;
             isResultComputed = true;
@@ -149,10 +161,16 @@ public class Optimizer {
     }
 
     public void step() throws UnAssignableJammerException {
-        if (!isOptimizationRunning || isResultComputed || !configuration.isStepByStep())
+        if (!isOptimizationRunning || isResultComputed)
             return;
 
-        oneNearestJammerAlgorithm.computeJAPForNextJammer();
+        try{
+            oneNearestJammerAlgorithm.computeJAPForNextJammer();
+        }
+        catch (UnAssignableJammerException ex){
+            isOptimizationRunning = false;
+            throw ex;
+        }
 
         if (oneNearestJammerAlgorithm.isFinished()){
             isOptimizationRunning = false;
@@ -165,77 +183,84 @@ public class Optimizer {
         if (isResultComputed){
             totalJAPSum = 0;
             for (Jammer jammer : jammers)
-                totalJAPSum += jammer.getActivityProbability();
+                totalJAPSum += jammer.getJAP();
         }
         else{
             totalJAPSum = -1;
         }
     }
 
-    public void loadMap(String fileName) throws FileNotFoundException, IncorrectMapException {
+    public void openMap(File file) throws FileNotFoundException, IncorrectMapException {
         clearData(true);
 
-        Scanner sc = new Scanner(new File(fileName));
-        String line;
-        int lineCount = 0;
-        int readBlockCount = 0;
-        boolean previousLineWasEmpty = false;
+        try {
+            Scanner sc = new Scanner(file);
+            String line;
+            int lineCount = 0;
+            int readBlockCount = 0;
+            boolean previousLineWasEmpty = false;
 
-        // Loading positions
-        while (sc.hasNextLine() && 3 >= readBlockCount) {
-            line = sc.nextLine();
-            ++lineCount;
+            // Loading positions
+            while (sc.hasNextLine() && 3 >= readBlockCount) {
+                line = sc.nextLine();
+                ++lineCount;
 
-            if (line.startsWith("#"))
-                continue;
+                if (line.startsWith("#"))
+                    continue;
 
-            if (line.isEmpty()) {
-                if (!previousLineWasEmpty){
-                    ++readBlockCount;
-                    previousLineWasEmpty = true;
+                if (line.isEmpty()) {
+                    if (!previousLineWasEmpty) {
+                        ++readBlockCount;
+                        previousLineWasEmpty = true;
+                    }
+                    continue;
+                } else {
+                    previousLineWasEmpty = false;
                 }
-                continue;
+
+                processLine(line, readBlockCount, lineCount);
             }
-            else{
-                previousLineWasEmpty = false;
+            sc.close();
+
+            if (3 > readBlockCount) {
+                throw new IncorrectMapException(MessageProvider.getMessage("incorrectMapStructure"));
             }
 
-            processLine(line, readBlockCount, lineCount);
+            // Filtering out duplicate entities
+            filterDuplicateElements(controlledRegion.getVertices());
+            filterDuplicateElements(storage.getVertices());
+            filterDuplicateElements(jammers);
+            filterDuplicateElements(witnessPoints);
+
+            // Checking polygons
+            checkPolygons();
+
+            // Checking jammers, witness entities, and their relations
+            checkJammers();
+            determineAlgorithmModelType();
+            setWitnessPointTypes();
+            assignWitnessPointsToJammers();
+            checkJammerWitnessPointRelations();
+
+            // Assigning jammers to algorithms
+            Jammer[] jammerArray = new Jammer[jammers.size()];
+            for (int i = 0; i < jammerArray.length; ++i)
+                jammerArray[i] = jammers.get(i);
+
+            if (AlgorithmType.NEAREST_JAMMER == algorithmType)
+                oneNearestJammerAlgorithm.setJammers(jammerArray);
+            else
+                twoNearestJammerAlgorithm.setJammers(jammerArray);
+
+            isMapLoadedCorrectly = true;
         }
-        sc.close();
-
-        if (3 > readBlockCount){
-            throw new IncorrectMapException(MessageProvider.getMessage("incorrectMapStructure"));
+        catch (FileNotFoundException | IncorrectMapException ex){
+            isMapLoadedCorrectly = false;
+            throw ex;
         }
-
-        // Filtering out duplicate entities
-        filterDuplicateElements(controlledRegion.getVertices());
-        filterDuplicateElements(storage.getVertices());
-        filterDuplicateElements(jammers);
-        filterDuplicateElements(witnessPoints);
-
-        // Checking polygons
-        checkPolygons();
-
-        // Checking jammers, witness entities, and their relations
-        checkJammers();
-        determineAlgorithmModelType();
-        setWitnessPointTypes();
-        assignWitnessPointsToJammers();
-        checkJammerWitnessPointRelations();
-
-        // Assigning jammers to algorithms
-        Jammer[] jammerArray = new Jammer[jammers.size()];
-        for (int i = 0; i < jammerArray.length; ++i)
-            jammerArray[i] = jammers.get(i);
-
-        if (AlgorithmType.NEAREST_JAMMER == algorithmType)
-            oneNearestJammerAlgorithm.setJammers(jammerArray);
-        else
-            twoNearestJammerAlgorithm.setJammers(jammerArray);
     }
 
-    private void clearData(boolean withMapData){
+    public void clearData(boolean withMapData){
         if (withMapData) {
             controlledRegion.clear();
             storage.clear();
@@ -244,7 +269,7 @@ public class Optimizer {
             Entity.resetIdGenerator();
         }
         else{
-            jammers.forEach(Jammer::resetActivityProbability);
+            jammers.forEach(Jammer::resetJAP);
         }
 
         oneNearestJammerAlgorithm.reset();
@@ -346,9 +371,7 @@ public class Optimizer {
     }
 
     private void setWitnessPointTypes(){
-        witnessPoints.stream().filter(witnessPoint -> !controlledRegion.isPositionInsidePolygon(witnessPoint.getPosition())).forEach(witnessPoint -> {
-            witnessPoint.setClosestStoragePoint(storage);
-        });
+        witnessPoints.stream().filter(witnessPoint -> !controlledRegion.isPositionInsidePolygon(witnessPoint.getPosition())).forEach(witnessPoint -> witnessPoint.setClosestStoragePoint(storage));
     }
 
     private void assignWitnessPointsToJammers() throws IncorrectMapException {
@@ -366,12 +389,15 @@ public class Optimizer {
     }
 
     public void saveConfiguration(String filePath) throws IOException {
-        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filePath + ".tcfg"));
+        if (!filePath.endsWith(".tcfg"))
+            filePath += ".tcfg";
+
+        ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filePath));
         oos.writeObject(configuration);
         oos.close();
     }
 
-    public void loadConfiguration(File configFile) throws IOException, ClassNotFoundException {
+    public void openConfiguration(File configFile) throws IOException, ClassNotFoundException {
         clearData(false);
         ObjectInputStream ois = new ObjectInputStream(new FileInputStream(configFile));
         configuration = (Configuration) ois.readObject();
@@ -381,6 +407,9 @@ public class Optimizer {
     public void saveResult(String filePath) throws FileNotFoundException {
         if (!isResultComputed)
             return;
+
+        if (!filePath.endsWith(".txt"))
+            filePath += ".txt";
 
         PrintWriter pw = new PrintWriter(new File(filePath));
 
@@ -392,11 +421,10 @@ public class Optimizer {
         pw.println(MessageProvider.getMessage("model") + "\t" + algorithmType.toString());
         pw.println(MessageProvider.getMessage("JAPResultsWithColon"));
         for (Jammer jammer : jammers){
-            pw.println(jammer.getId() + "\t" + jammer.getActivityProbability());
+            pw.println(jammer.getId() + "\t" + jammer.getJAP());
         }
         pw.println(MessageProvider.getMessage("totalJAPSum") + " " + totalJAPSum);
 
         pw.close();
-        // todo: is flush needed?
     }
 }

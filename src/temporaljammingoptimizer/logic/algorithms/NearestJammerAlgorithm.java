@@ -19,7 +19,7 @@ public abstract class NearestJammerAlgorithm {
     }
 
     protected float computeStorageDistanceFactor(float distance){
-        return 0.5f * (1 - (float)Math.pow(Math.E, -configuration.getPropagationFactor1() * Math.pow(distance, configuration.getPropagationFactor2())));
+        return 0.5f * (1 - (float)Math.pow(Math.E, -configuration.getSignalDecayFactor1() * Math.pow(distance, configuration.getSignalDecayFactor2())));
     }
 
     protected float computeJammerDistanceFactor(float distance){

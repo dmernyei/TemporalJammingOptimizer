@@ -1,4 +1,4 @@
-package temporaljammingoptimizer.utils;
+package temporaljammingoptimizer.utilities;
 
 import java.util.Locale;
 import java.util.ResourceBundle;

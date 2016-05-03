@@ -5,6 +5,7 @@ import temporaljammingoptimizer.logic.entities.Jammer;
 import temporaljammingoptimizer.logic.entities.WitnessPoint;
 import temporaljammingoptimizer.logic.exceptions.UnAssignableJammerException;
 import temporaljammingoptimizer.logic.geometry.Vector2;
+import temporaljammingoptimizer.utilities.MessageProvider;
 
 import java.util.ArrayList;
 
@@ -56,11 +57,14 @@ public class OneNearestJammerAlgorithm extends NearestJammerAlgorithm {
     }
 
     public void computeJAPForNextJammer() throws UnAssignableJammerException {
+        storagePointJAPBoundInfos.clear();
+        eavesdropperPointJAPBoundInfos.clear();
+
         Jammer currentJammer = jammers[nextJammerIndex];
         ++nextJammerIndex;
 
         for (int i = 0; i < currentJammer.getNearbyWitnessPointCount(); ++i){
-            computeActivityProbabilityBound(currentJammer.getNearbyWitnessPointAt(i), currentJammer);
+            computeJAPBound(currentJammer.getNearbyWitnessPointAt(i), currentJammer);
         }
 
         float currentJAPBound;
@@ -79,27 +83,47 @@ public class OneNearestJammerAlgorithm extends NearestJammerAlgorithm {
         }
 
         if (maxEavesdropperPointJAPBound > minStoragePointJAPBound)
-            throw new UnAssignableJammerException(currentJammer.getId());
+            throw new UnAssignableJammerException(MessageProvider.getMessage("defaultUnAssignableJammerExceptionMessageForOneNearestJammerModel"), currentJammer.getId());
         else
-            currentJammer.setActivityProbability(maxEavesdropperPointJAPBound);
+            currentJammer.setJAP(maxEavesdropperPointJAPBound);
     }
 
-    private void computeActivityProbabilityBound(WitnessPoint witnessPoint, Jammer jammer){
+    private void computeJAPBound(WitnessPoint witnessPoint, Jammer jammer) throws UnAssignableJammerException {
         boolean isStoragePoint = witnessPoint.isStoragePoint();
         float TBEPBound = isStoragePoint ? configuration.getUpperSTBEPBound() : configuration.getLowerETBEPBound();
-        float activityProbability = 0.0f;
+        float JAP = -1;
         float step = 1.0f;
         float difference = 1;
         float TBEP;
 
-        do{
-            step /= 2;
-            activityProbability += Math.signum(difference) * step;
-            TBEP = computeTBEP(witnessPoint, jammer, activityProbability);
-            difference = TBEPBound - TBEP;
-        }while (epsilon < Math.abs(difference));
+        // Checking corner cases
+        float zeroJAPSignum = Math.signum(TBEPBound - computeTBEP(witnessPoint, jammer, 0));
+        float oneJAPSignum = Math.signum(TBEPBound - computeTBEP(witnessPoint, jammer, 1));
+        if (zeroJAPSignum == oneJAPSignum){
+            if (isStoragePoint){
+                JAP = 1;
+            }
+            else{
+                if (0 == zeroJAPSignum || -1 == zeroJAPSignum)
+                    JAP = 0;
+                else
+                    throw new UnAssignableJammerException(MessageProvider.getMessage("tooLowTBEPForEavesdropper"), witnessPoint.getId());
+            }
+        }
 
-        WitnessPointJAPBoundInfo witnessPointJAPBoundInfo = new WitnessPointJAPBoundInfo(witnessPoint.getId(), activityProbability);
+        // Approximating JAP
+        if (-1 == JAP){
+            JAP = 0;
+            do{
+                step /= 2;
+                JAP += Math.signum(difference) * step;
+                TBEP = computeTBEP(witnessPoint, jammer, JAP);
+                difference = TBEPBound - TBEP;
+            }while (epsilon < Math.abs(difference));
+        }
+
+        // Assigning JAP
+        WitnessPointJAPBoundInfo witnessPointJAPBoundInfo = new WitnessPointJAPBoundInfo(witnessPoint.getId(), JAP);
         if (isStoragePoint)
             storagePointJAPBoundInfos.add(witnessPointJAPBoundInfo);
         else
@@ -114,6 +138,13 @@ public class OneNearestJammerAlgorithm extends NearestJammerAlgorithm {
         }
         else{
             float storageDistanceFactor = computeStorageDistanceFactor(witnessPoint.getSmallestDistanceFromStorage());
+
+//            float a = (1 - activityProbability) * storageDistanceFactor;
+//            //float b = activityProbability * Math.max(storageDistanceFactor, jammerDistanceFactor);
+//            float b = activityProbability * jammerDistanceFactor;
+//
+//            return a + b;
+
             return (1 - activityProbability) * storageDistanceFactor
                     + activityProbability * Math.max(storageDistanceFactor, jammerDistanceFactor);
         }

@@ -4,8 +4,8 @@ import temporaljammingoptimizer.logic.exceptions.IncorrectMapException;
 import temporaljammingoptimizer.logic.JammerDistanceInfo;
 import temporaljammingoptimizer.logic.geometry.Polygon;
 import temporaljammingoptimizer.logic.geometry.Vector2;
-import temporaljammingoptimizer.utils.MathUtilities;
-import temporaljammingoptimizer.utils.MessageProvider;
+import temporaljammingoptimizer.utilities.MathUtilities;
+import temporaljammingoptimizer.utilities.MessageProvider;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,6 +16,7 @@ import java.util.Arrays;
 public class WitnessPoint extends Entity {
 
     private float smallestDistanceFromStorage = -1;
+    private Jammer oneNearestJammer;
 
     public WitnessPoint(Vector2 position){
         super(position);
@@ -27,6 +28,10 @@ public class WitnessPoint extends Entity {
 
     public float getSmallestDistanceFromStorage() {
         return smallestDistanceFromStorage;
+    }
+
+    public boolean isOneNearestJammer(Jammer jammer){
+        return oneNearestJammer.equals(jammer);
     }
 
     public void setClosestStoragePoint(Polygon storage){
@@ -55,7 +60,8 @@ public class WitnessPoint extends Entity {
         Arrays.sort(jammerDistanceInfos);
 
         int nearbyJammerIndex1 = jammerDistanceInfos[0].getIndex();
-        jammers.get(nearbyJammerIndex1).addNearbyWitnessPoint(this);
+        oneNearestJammer = jammers.get(nearbyJammerIndex1);
+        oneNearestJammer.addNearbyWitnessPoint(this);
 
         if (twoNearest && jammerCount > 1){
             int nearbyJammerIndex2 = jammerDistanceInfos[1].getIndex();

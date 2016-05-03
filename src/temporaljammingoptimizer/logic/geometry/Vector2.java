@@ -20,11 +20,6 @@ public class Vector2 implements Cloneable {
         return y;
     }
 
-    public void set(Vector2 v){
-        x = v.getX();
-        y = v.getY();
-    }
-
     public Vector2 subtract(Vector2 other){
         return new Vector2(x - other.getX(), y - other.getY());
     }
@@ -37,11 +32,11 @@ public class Vector2 implements Cloneable {
         return new Vector2(Math.round(x * scalar), Math.round(y * scalar));
     }
 
-    public float getLength(){
+    private float getLength(){
         return (float)Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2));
     }
 
-    public float getLengthSquared(){
+    private float getLengthSquared(){
         return (float)(Math.pow(x, 2) + Math.pow(y, 2));
     }
 
@@ -63,16 +58,6 @@ public class Vector2 implements Cloneable {
     public String toString(){
         return "[" + x + ", " + y + "]";
     }
-
-    // todo: is this needed?
-//    @Override
-//    public Vector2 clone(){
-//        try {
-//            return (Vector2)super.clone();
-//        } catch (CloneNotSupportedException ex) {
-//            return new Vector2(x, y);
-//        }
-//    }
 
     public static float distance(Vector2 v1, Vector2 v2){
         return v1.subtract(v2).getLength();

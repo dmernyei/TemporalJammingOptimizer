@@ -1,4 +1,4 @@
-package temporaljammingoptimizer.utils;
+package temporaljammingoptimizer.utilities;
 
 import temporaljammingoptimizer.logic.geometry.Vector2;
 
